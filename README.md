@@ -1,1 +1,1 @@
-# Projekt_In-ynierski_AuraMed
+# Projekt Inżynierski AuraMed
