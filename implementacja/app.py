@@ -50,6 +50,11 @@ def load_models():
 def get_engine():
     return create_engine(DB_URL)
 
+def load_wagi():
+    engine = get_engine()
+    df_wagi = pd.read_sql("SELECT id, waga FROM objawy", engine)
+    return dict(zip(df_wagi['id'], df_wagi['waga']))
+
 @st.cache_data
 def load_training_data():
     engine = get_engine()
@@ -130,6 +135,7 @@ def save_recommendation(disease, confidence, algorithm):
 try:
     res = load_models()
     X_clean, y_clean = load_training_data()
+    wagi_dict = load_wagi()
     engine = get_engine()
 except Exception as e:
     st.error(f"Błąd ładowania zasobów: {e}")
@@ -170,7 +176,7 @@ if zakładka == "Diagnostyka":
         algorytm = st.selectbox(
             "Algorytm klasyfikacji:",
             [
-                "Logistic Regression (zalecany — najwyższa odporność na błędy)",
+                "Logistic Regression (najwyższa odporność na błędy)",
                 "Random Forest (wysoka dokładność, analiza ważności objawów)"
             ]
         )
@@ -204,11 +210,11 @@ if zakładka == "Diagnostyka":
         if not objawy_wybrane:
             st.error("Wybierz co najmniej jeden objaw.")
         else:
-            # Buduj wektor wejściowy
+            feature_ids = res['feature_ids']  
             input_vector = np.zeros(len(res['feature_ids']))
             for i, name in enumerate(res['feature_names']):
                 if name in objawy_wybrane:
-                    input_vector[i] = 1
+                    input_vector[i] = wagi_dict.get(feature_ids[i], 1)  # Użyj wagi, jeśli dostępna, w przeciwnym razie 1
 
             # Wybór modelu
             if "Logistic" in algorytm:
