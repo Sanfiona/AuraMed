@@ -18,6 +18,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
 import time
+from translations import tlumacz_objaw, tlumacz_diete,tlumacz_chorobe, tlumacz_zalecenie, przygotuj_liste_objawow
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -167,11 +168,16 @@ if zakładka == "Diagnostyka":
         )
 
         # Wybór objawów
-        objawy_wybrane = st.multiselect(
-            "Objawy pacjenta:",
-            options=res['feature_names'],
-            help="Wybierz wszystkie zaobserwowane objawy pacjenta"
+        pary_objawow = przygotuj_liste_objawow(res['feature_names'])
+        polskie_nazwy = [p[0] for p in pary_objawow]
+        angielskie_nazwy = [p[1] for p in pary_objawow]
+
+        wybrane_pl = st.multiselect( 
+            "Obrajwy pacjenta: ",
+            options=polskie_nazwy,
         )
+
+        objawy_wybrane = [angielskie_nazwy[polskie_nazwy.index(name)] for name in wybrane_pl]
 
         generuj = st.button("Generuj rekomendację", use_container_width=True, type="primary")
 
@@ -247,7 +253,7 @@ if zakładka == "Diagnostyka":
             leki, diety, zalecenia, opis = get_recommendations(top_disease)
 
             if not opis.empty and opis.iloc[0]['opis']:
-                st.info(f"**Opis choroby:** {opis.iloc[0]['opis']}")
+                st.info(f"**Opis choroby:** {tlumacz_chorobe(opis.iloc[0]['opis'])}")
 
             tab1, tab2, tab3 = st.tabs(["Leki", "Dieta", "Zalecenia"])
 
@@ -261,14 +267,14 @@ if zakładka == "Diagnostyka":
             with tab2:
                 if not diety.empty:
                     for _, row in diety.iterrows():
-                        st.markdown(f"- {row['nazwa_diety']}")
+                        st.markdown(f"- {tlumacz_diete(row['nazwa_diety'])}")
                 else:
                     st.info("Brak danych dietetycznych dla tej choroby.")
 
             with tab3:
                 if not zalecenia.empty:
                     for _, row in zalecenia.iterrows():
-                        st.markdown(f"- {row['tresc_zalecenia']}")
+                        st.markdown(f"- {tlumacz_zalecenie(row['tresc_zalecenia'])}")
                 else:
                     st.info("Brak zaleceń dla tej choroby.")
 
