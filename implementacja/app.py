@@ -17,6 +17,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
+from sqlalchemy import create_engine, text
 import time
 from translations import tlumacz_objaw, tlumacz_diete,tlumacz_chorobe, tlumacz_zalecenie, przygotuj_liste_objawow
 import warnings
@@ -107,13 +108,20 @@ def get_recommendations(disease_name):
 def save_recommendation(disease, confidence, algorithm):
     engine = get_engine()
     with engine.connect() as conn:
-        conn.execute(f"""
+        query = text("""
             INSERT INTO rekomendacje (kod_pacjenta, przewidziana_choroba_id, pewnosc_predykcji, algorytm)
-            VALUES ('PAC-{int(time.time())}',
-                    (SELECT id FROM choroby WHERE nazwa_choroby = '{disease}'),
-                    {confidence},
-                    '{algorithm}')
+            VALUES (:kod_pacjenta,
+                    (SELECT id FROM choroby WHERE nazwa_choroby = :disease),
+                    :confidence,
+                    :algorithm)
         """)
+        
+        conn.execute(query, {
+            "kod_pacjenta": f"PAC-{int(time.time())}",
+            "disease": disease,
+            "confidence": confidence,
+            "algorithm": algorithm
+        })
         conn.commit()
 
 # ─────────────────────────────────────────────
