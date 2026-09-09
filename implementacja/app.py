@@ -7,7 +7,7 @@ import streamlit as st
 import joblib
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -16,10 +16,9 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, f1_score
-from sqlalchemy import create_engine, text
+from sklearn.metrics import accuracy_score
 import time
-from translations import tlumacz_objaw, tlumacz_diete,tlumacz_chorobe, tlumacz_zalecenie, przygotuj_liste_objawow
+from translations import tlumacz_objaw, tlumacz_diete, tlumacz_chorobe, tlumacz_zalecenie, przygotuj_liste_objawow
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -120,7 +119,6 @@ def save_recommendation(disease, confidence, algorithm):
                     :confidence,
                     :algorithm)
         """)
-        
         conn.execute(query, {
             "kod_pacjenta": f"PAC-{int(time.time())}",
             "disease": disease,
@@ -151,7 +149,7 @@ st.sidebar.divider()
 
 zakładka = st.sidebar.radio(
     "Nawigacja",
-    ["Diagnostyka", "Statystyki", "Porównanie algorytmów"],
+    ["Diagnostyka", "Statystyki", "Porównanie algorytmów", "Historia"],
     label_visibility="collapsed"
 )
 
@@ -172,7 +170,6 @@ if zakładka == "Diagnostyka":
     with col_form:
         st.subheader("Wybór objawów")
 
-        # Wybór algorytmu
         algorytm = st.selectbox(
             "Algorytm klasyfikacji:",
             [
@@ -181,13 +178,12 @@ if zakładka == "Diagnostyka":
             ]
         )
 
-        # Wybór objawów
         pary_objawow = przygotuj_liste_objawow(res['feature_names'])
         polskie_nazwy = [p[0] for p in pary_objawow]
         angielskie_nazwy = [p[1] for p in pary_objawow]
 
-        wybrane_pl = st.multiselect( 
-            "Obrajwy pacjenta: ",
+        wybrane_pl = st.multiselect(
+            "Objawy pacjenta:",
             options=polskie_nazwy,
         )
 
@@ -205,18 +201,16 @@ if zakładka == "Diagnostyka":
         """)
         st.warning("⚠️ System służy wyłącznie jako wsparcie decyzji. Ostateczna diagnoza należy do lekarza.")
 
-    # ── WYNIKI ──
     if generuj:
         if not objawy_wybrane:
             st.error("Wybierz co najmniej jeden objaw.")
         else:
-            feature_ids = res['feature_ids']  
+            feature_ids = res['feature_ids']
             input_vector = np.zeros(len(res['feature_ids']))
             for i, name in enumerate(res['feature_names']):
                 if name in objawy_wybrane:
-                    input_vector[i] = wagi_dict.get(feature_ids[i], 1)  # Użyj wagi, jeśli dostępna, w przeciwnym razie 1
+                    input_vector[i] = wagi_dict.get(feature_ids[i], 1)
 
-            # Wybór modelu
             if "Logistic" in algorytm:
                 model = res['lr']
                 alg_name = "Logistic Regression"
@@ -224,7 +218,6 @@ if zakładka == "Diagnostyka":
                 model = res['rf']
                 alg_name = "Random Forest"
 
-            # Predykcja
             probs = model.predict_proba([input_vector])[0]
             classes = model.classes_
             top_idx = np.argsort(probs)[::-1][:5]
@@ -234,14 +227,12 @@ if zakładka == "Diagnostyka":
 
             st.divider()
 
-            # Główna diagnoza
             col_diag, col_prob = st.columns([2, 1])
             with col_diag:
                 st.success(f"### Główne rozpoznanie: **{top_disease}**")
             with col_prob:
                 st.metric("Pewność modelu", f"{top_prob*100:.1f}%")
 
-            # Top 5 diagnoz
             st.subheader("Top 5 najbardziej prawdopodobnych diagnoz")
             df_top = pd.DataFrame({
                 'Diagnoza': [classes[i] for i in top_idx],
@@ -249,7 +240,7 @@ if zakładka == "Diagnostyka":
             })
             st.dataframe(df_top, use_container_width=True, hide_index=True)
 
-            # Podobni pacjenci (cosine similarity)
+            # Podobni pacjenci
             st.subheader("👥 Podobni pacjenci z bazy danych")
             sims = cosine_similarity([input_vector], X_clean.values)[0]
             top_sim_idx = np.argsort(sims)[::-1][:5]
@@ -260,7 +251,33 @@ if zakładka == "Diagnostyka":
             })
             st.dataframe(podobni, use_container_width=True, hide_index=True)
 
-            # Rekomendacje z bazy
+            # Szczegóły podobnych pacjentów
+            st.subheader("🔍 Szczegóły podobnych przypadków")
+            for idx, sim_idx in enumerate(top_sim_idx[:3]):
+                choroba_podobnego = y_clean.iloc[sim_idx]
+                with st.expander(f"Przypadek {idx+1} — {choroba_podobnego} (podobieństwo: {sims[sim_idx]*100:.1f}%)"):
+                    objawy_podobnego = [
+                        res['feature_names'][i]
+                        for i, val in enumerate(X_clean.iloc[sim_idx])
+                        if val > 0
+                    ]
+                    objawy_pl = [tlumacz_objaw(o) for o in objawy_podobnego]
+
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.write("**Objawy tego pacjenta:**")
+                        for o in objawy_pl:
+                            st.markdown(f"- {o}")
+                    with col_b:
+                        st.write("**Wspólne objawy z nowym pacjentem:**")
+                        wspolne = [tlumacz_objaw(o) for o in objawy_podobnego if o in objawy_wybrane]
+                        if wspolne:
+                            for o in wspolne:
+                                st.markdown(f"✅ {o}")
+                        else:
+                            st.write("Brak dokładnie wspólnych objawów")
+
+            # Plan leczenia
             st.divider()
             st.subheader(f"Plan leczenia dla: {top_disease}")
 
@@ -292,7 +309,6 @@ if zakładka == "Diagnostyka":
                 else:
                     st.info("Brak zaleceń dla tej choroby.")
 
-            # Zapis do bazy
             try:
                 save_recommendation(top_disease, float(top_prob), alg_name)
                 st.caption("✅ Rekomendacja zapisana w historii.")
@@ -382,10 +398,8 @@ elif zakładka == "Porównanie algorytmów":
 
     if st.button("Uruchom eksperyment", type="primary"):
         wyniki = {name: [] for name in models_dict}
-
         progress = st.progress(0)
         status = st.empty()
-
         total = len(models_dict) * len(poziomy)
         krok = 0
 
@@ -401,7 +415,6 @@ elif zakładka == "Porównanie algorytmów":
 
         status.text("✅ Eksperyment zakończony!")
 
-        # Tabela wyników
         df_wyniki = pd.DataFrame(wyniki, index=etykiety).T
         df_wyniki.columns = ['Szum 0%', 'Szum 5%', 'Szum 10%', 'Szum 20%']
         df_wyniki['Spadek'] = df_wyniki['Szum 0%'] - df_wyniki['Szum 20%']
@@ -424,3 +437,79 @@ elif zakładka == "Porównanie algorytmów":
         st.error(f"❌ Najmniej odporny algorytm: **{df_wyniki.index[-1]}** (spadek: {df_wyniki.iloc[-1]['Spadek']:.4f})")
     else:
         st.info("Kliknij przycisk aby uruchomić eksperyment porównawczy. Może to potrwać około 30 sekund.")
+
+# ═══════════════════════════════════════════════
+# ZAKŁADKA 4 — HISTORIA REKOMENDACJI
+# ═══════════════════════════════════════════════
+elif zakładka == "Historia":
+    st.title("📋 Historia Rekomendacji")
+    st.markdown("Przeglądaj historię wszystkich wygenerowanych rekomendacji diagnostycznych.")
+
+    query_historia = '''
+        SELECT
+            r.id,
+            r.kod_pacjenta,
+            c.nazwa_choroby AS diagnoza,
+            ROUND(CAST(r.pewnosc_predykcji * 100 AS numeric), 1) AS pewnosc,
+            r.algorytm,
+            TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI') AS data
+        FROM rekomendacje r
+        JOIN choroby c ON r.przewidziana_choroba_id = c.id
+        ORDER BY r.created_at DESC
+    '''
+
+    try:
+        df_historia = pd.read_sql(query_historia, engine)
+
+        if df_historia.empty:
+            st.info("Brak historii rekomendacji.")
+        else:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Łączna liczba rekomendacji", len(df_historia))
+            with col2:
+                st.metric("Najczęstsza diagnoza",
+                         df_historia['diagnoza'].value_counts().index[0])
+            with col3:
+                st.metric("Średnia pewność modelu",
+                         f"{df_historia['pewnosc'].mean():.1f}%")
+
+            st.divider()
+
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                choroby_lista = ['Wszystkie'] + sorted(df_historia['diagnoza'].unique().tolist())
+                filtr_choroba = st.selectbox("Filtruj po diagnozie:", choroby_lista)
+            with col_f2:
+                filtr_algorytm = st.selectbox(
+                    "Filtruj po algorytmie:",
+                    ['Wszystkie', 'Logistic Regression', 'Random Forest']
+                )
+
+            df_filtered = df_historia.copy()
+            if filtr_choroba != 'Wszystkie':
+                df_filtered = df_filtered[df_filtered['diagnoza'] == filtr_choroba]
+            if filtr_algorytm != 'Wszystkie':
+                df_filtered = df_filtered[df_filtered['algorytm'] == filtr_algorytm]
+
+            st.subheader(f"Znalezione rekomendacje: {len(df_filtered)}")
+            st.dataframe(
+                df_filtered.rename(columns={
+                    'id': 'ID',
+                    'kod_pacjenta': 'Kod pacjenta',
+                    'diagnoza': 'Diagnoza',
+                    'pewnosc': 'Pewność (%)',
+                    'algorytm': 'Algorytm',
+                    'data': 'Data i godzina'
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+
+            st.subheader("Rozkład diagnoz w historii")
+            dist_historia = df_historia['diagnoza'].value_counts().reset_index()
+            dist_historia.columns = ['Diagnoza', 'Liczba rekomendacji']
+            st.bar_chart(dist_historia.set_index('Diagnoza'))
+
+    except Exception as e:
+        st.error(f"Błąd pobierania historii: {e}")
