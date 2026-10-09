@@ -26,7 +26,7 @@ warnings.filterwarnings('ignore')
 # KONFIGURACJA
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="AuraMed — System Rekomendacji Terapii",
+    page_title="AuraMed - System Rekomendacji Terapii",
     page_icon="🏥",
     layout="wide"
 )
@@ -136,13 +136,12 @@ try:
     wagi_dict = load_wagi()
     engine = get_engine()
 except Exception as e:
-    st.error(f"Błąd ładowania zasobów: {e}")
+    st.error(f"Blad ladowania zasobow: {e}")
     st.stop()
 
 # ─────────────────────────────────────────────
 # NAWIGACJA
 # ─────────────────────────────────────────────
-st.sidebar.image("https://img.icons8.com/color/96/hospital.png", width=80)
 st.sidebar.title("AuraMed")
 st.sidebar.caption("System Rekomendacji Terapii")
 st.sidebar.divider()
@@ -199,121 +198,151 @@ if zakładka == "Diagnostyka":
         3. Kliknij **Generuj rekomendację**
         4. System wyświetli diagnozę i plan leczenia
         """)
-        st.warning("⚠️ System służy wyłącznie jako wsparcie decyzji. Ostateczna diagnoza należy do lekarza.")
+        st.warning("System służy wyłącznie jako wsparcie decyzji. Ostateczna diagnoza należy do lekarza.")
 
+    # Używamy session_state, aby wyniki nie znikały przy klikaniu w tabelę
     if generuj:
         if not objawy_wybrane:
             st.error("Wybierz co najmniej jeden objaw.")
+            st.session_state['generowanie_ok'] = False
         else:
-            feature_ids = res['feature_ids']
-            input_vector = np.zeros(len(res['feature_ids']))
-            for i, name in enumerate(res['feature_names']):
-                if name in objawy_wybrane:
-                    input_vector[i] = wagi_dict.get(feature_ids[i], 1)
+            st.session_state['generowanie_ok'] = True
+            st.session_state['objawy_wybrane'] = objawy_wybrane
+            st.session_state['algorytm'] = algorytm
 
-            if "Logistic" in algorytm:
-                model = res['lr']
-                alg_name = "Logistic Regression"
+    if st.session_state.get('generowanie_ok', False):
+        objawy_wybrane = st.session_state['objawy_wybrane']
+        algorytm = st.session_state['algorytm']
+
+        feature_ids = res['feature_ids']
+        input_vector = np.zeros(len(res['feature_ids']))
+        for i, name in enumerate(res['feature_names']):
+            if name in objawy_wybrane:
+                input_vector[i] = wagi_dict.get(feature_ids[i], 1)
+
+        if "Logistic" in algorytm:
+            model = res['lr']
+            alg_name = "Logistic Regression"
+        else:
+            model = res['rf']
+            alg_name = "Random Forest"
+
+        probs = model.predict_proba([input_vector])[0]
+        classes = model.classes_
+        top_idx = np.argsort(probs)[::-1][:5]
+
+        top_disease = classes[top_idx[0]]
+        top_prob = probs[top_idx[0]]
+
+        st.divider()
+
+        col_diag, col_prob = st.columns([2, 1])
+        with col_diag:
+            st.success(f"### Główne rozpoznanie: **{top_disease}**")
+        with col_prob:
+            st.metric("Pewność modelu", f"{top_prob*100:.1f}%")
+
+        st.subheader("Top 5 najbardziej prawdopodobnych diagnoz")
+        df_top = pd.DataFrame({
+            'Diagnoza': [classes[i] for i in top_idx],
+            'Prawdopodobieństwo': [f"{probs[i]*100:.1f}%" for i in top_idx]
+        })
+        st.dataframe(df_top, use_container_width=True, hide_index=True)
+
+        # Podobni pacjenci
+        st.subheader("Podobni pacjenci z bazy danych")
+        sims = cosine_similarity([input_vector], X_clean.values)[0]
+        top_sim_idx = np.argsort(sims)[::-1][:5]
+        
+        podobni = pd.DataFrame({
+            'ID przypadku': X_clean.index[top_sim_idx],
+            'Diagnoza': y_clean.iloc[top_sim_idx].values,
+            'Podobieństwo': [f"{sims[i]*100:.1f}%" for i in top_sim_idx]
+        })
+        
+        event = st.dataframe(
+            podobni, 
+            use_container_width=True, 
+            hide_index=True,
+            selection_mode="single-row",
+            on_select="rerun"
+        )
+
+        # Szczegóły wybranego pacjenta z tabeli
+        st.subheader("Szczegóły wybranego przypadku")
+        selected_rows = event.selection.get("rows", [])
+
+        if selected_rows:
+            wybrany_row_idx = selected_rows[0]
+            sim_idx = top_sim_idx[wybrany_row_idx]
+            choroba_podobnego = y_clean.iloc[sim_idx]
+
+            st.write(f"Wybrany przypadek ID: {X_clean.index[sim_idx]} — Diagnoza: **{choroba_podobnego}** (podobieństwo: {sims[sim_idx]*100:.1f}%)")
+
+            objawy_podobnego = [
+                res['feature_names'][i]
+                for i, val in enumerate(X_clean.iloc[sim_idx])
+                if val > 0
+            ]
+            objawy_pl = [tlumacz_objaw(o) for o in objawy_podobnego]
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.write("**Objawy tego pacjenta:**")
+                for o in objawy_pl:
+                    st.markdown(f"- {o}")
+            with col_b:
+                st.write("**Wspólne objawy z nowym pacjentem:**")
+                wspolne = [tlumacz_objaw(o) for o in objawy_podobnego if o in objawy_wybrane]
+                if wspolne:
+                    for o in wspolne:
+                        st.markdown(f"- {o}")
+                else:
+                    st.write("Brak dokładnie wspólnych objawów")
+        else:
+            st.info("Kliknij w wiersz tabeli powyżej, aby zobaczyć szczegóły konkretnego pacjenta.")
+
+        # Plan leczenia
+        st.divider()
+        st.subheader(f"Plan leczenia dla: {top_disease}")
+
+        leki, diety, zalecenia, opis = get_recommendations(top_disease)
+
+        if not opis.empty and opis.iloc[0]['opis']:
+            st.info(f"**Opis choroby:** {tlumacz_chorobe(opis.iloc[0]['opis'])}")
+
+        tab1, tab2, tab3 = st.tabs(["Leki", "Dieta", "Zalecenia"])
+
+        with tab1:
+            if not leki.empty:
+                for _, row in leki.iterrows():
+                    st.markdown(f"- {row['nazwa_leku']}")
             else:
-                model = res['rf']
-                alg_name = "Random Forest"
+                st.info("Brak danych o lekach dla tej choroby.")
 
-            probs = model.predict_proba([input_vector])[0]
-            classes = model.classes_
-            top_idx = np.argsort(probs)[::-1][:5]
+        with tab2:
+            if not diety.empty:
+                for _, row in diety.iterrows():
+                    st.markdown(f"- {tlumacz_diete(row['nazwa_diety'])}")
+            else:
+                st.info("Brak danych dietetycznych dla tej choroby.")
 
-            top_disease = classes[top_idx[0]]
-            top_prob = probs[top_idx[0]]
+        with tab3:
+            if not zalecenia.empty:
+                for _, row in zalecenia.iterrows():
+                    st.markdown(f"- {tlumacz_zalecenie(row['tresc_zalecenia'])}")
+            else:
+                st.info("Brak zaleceń dla tej choroby.")
 
-            st.divider()
-
-            col_diag, col_prob = st.columns([2, 1])
-            with col_diag:
-                st.success(f"### Główne rozpoznanie: **{top_disease}**")
-            with col_prob:
-                st.metric("Pewność modelu", f"{top_prob*100:.1f}%")
-
-            st.subheader("Top 5 najbardziej prawdopodobnych diagnoz")
-            df_top = pd.DataFrame({
-                'Diagnoza': [classes[i] for i in top_idx],
-                'Prawdopodobieństwo': [f"{probs[i]*100:.1f}%" for i in top_idx]
-            })
-            st.dataframe(df_top, use_container_width=True, hide_index=True)
-
-            # Podobni pacjenci
-            st.subheader("👥 Podobni pacjenci z bazy danych")
-            sims = cosine_similarity([input_vector], X_clean.values)[0]
-            top_sim_idx = np.argsort(sims)[::-1][:5]
-            podobni = pd.DataFrame({
-                'ID przypadku': X_clean.index[top_sim_idx],
-                'Diagnoza': y_clean.iloc[top_sim_idx].values,
-                'Podobieństwo': [f"{sims[i]*100:.1f}%" for i in top_sim_idx]
-            })
-            st.dataframe(podobni, use_container_width=True, hide_index=True)
-
-            # Szczegóły podobnych pacjentów
-            st.subheader("🔍 Szczegóły podobnych przypadków")
-            for idx, sim_idx in enumerate(top_sim_idx[:3]):
-                choroba_podobnego = y_clean.iloc[sim_idx]
-                with st.expander(f"Przypadek {idx+1} — {choroba_podobnego} (podobieństwo: {sims[sim_idx]*100:.1f}%)"):
-                    objawy_podobnego = [
-                        res['feature_names'][i]
-                        for i, val in enumerate(X_clean.iloc[sim_idx])
-                        if val > 0
-                    ]
-                    objawy_pl = [tlumacz_objaw(o) for o in objawy_podobnego]
-
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.write("**Objawy tego pacjenta:**")
-                        for o in objawy_pl:
-                            st.markdown(f"- {o}")
-                    with col_b:
-                        st.write("**Wspólne objawy z nowym pacjentem:**")
-                        wspolne = [tlumacz_objaw(o) for o in objawy_podobnego if o in objawy_wybrane]
-                        if wspolne:
-                            for o in wspolne:
-                                st.markdown(f"✅ {o}")
-                        else:
-                            st.write("Brak dokładnie wspólnych objawów")
-
-            # Plan leczenia
-            st.divider()
-            st.subheader(f"Plan leczenia dla: {top_disease}")
-
-            leki, diety, zalecenia, opis = get_recommendations(top_disease)
-
-            if not opis.empty and opis.iloc[0]['opis']:
-                st.info(f"**Opis choroby:** {tlumacz_chorobe(opis.iloc[0]['opis'])}")
-
-            tab1, tab2, tab3 = st.tabs(["Leki", "Dieta", "Zalecenia"])
-
-            with tab1:
-                if not leki.empty:
-                    for _, row in leki.iterrows():
-                        st.markdown(f"- {row['nazwa_leku']}")
-                else:
-                    st.info("Brak danych o lekach dla tej choroby.")
-
-            with tab2:
-                if not diety.empty:
-                    for _, row in diety.iterrows():
-                        st.markdown(f"- {tlumacz_diete(row['nazwa_diety'])}")
-                else:
-                    st.info("Brak danych dietetycznych dla tej choroby.")
-
-            with tab3:
-                if not zalecenia.empty:
-                    for _, row in zalecenia.iterrows():
-                        st.markdown(f"- {tlumacz_zalecenie(row['tresc_zalecenia'])}")
-                else:
-                    st.info("Brak zaleceń dla tej choroby.")
-
+        # Zapisujemy do historii tylko raz przy wygenerowaniu (lub przy zmianie danych)
+        if 'zapisano_id' not in st.session_state or st.session_state.get('ostatnie_objawy') != objawy_wybrane:
             try:
                 save_recommendation(top_disease, float(top_prob), alg_name)
-                st.caption("✅ Rekomendacja zapisana w historii.")
+                st.session_state['zapisano_id'] = True
+                st.session_state['ostatnie_objawy'] = objawy_wybrane
+                st.caption("Rekomendacja zapisana w historii.")
             except:
-                st.caption("⚠️ Nie udało się zapisać rekomendacji w historii.")
+                st.caption("Nie udało się zapisać rekomendacji w historii.")
 
 # ═══════════════════════════════════════════════
 # ZAKŁADKA 2 — STATYSTYKI
@@ -413,7 +442,7 @@ elif zakładka == "Porównanie algorytmów":
                 krok += 1
                 progress.progress(krok / total)
 
-        status.text("✅ Eksperyment zakończony!")
+        status.text("Eksperyment zakończony!")
 
         df_wyniki = pd.DataFrame(wyniki, index=etykiety).T
         df_wyniki.columns = ['Szum 0%', 'Szum 5%', 'Szum 10%', 'Szum 20%']
@@ -433,8 +462,8 @@ elif zakładka == "Porównanie algorytmów":
         st.subheader("Wykres — wpływ szumu na dokładność")
         st.line_chart(pd.DataFrame(wyniki, index=etykiety))
 
-        st.success(f"✅ Najbardziej odporny algorytm: **{df_wyniki.index[0]}** (spadek: {df_wyniki.iloc[0]['Spadek']:.4f})")
-        st.error(f"❌ Najmniej odporny algorytm: **{df_wyniki.index[-1]}** (spadek: {df_wyniki.iloc[-1]['Spadek']:.4f})")
+        st.success(f"Najbardziej odporny algorytm: **{df_wyniki.index[0]}** (spadek: {df_wyniki.iloc[0]['Spadek']:.4f})")
+        st.error(f"Najmniej odporny algorytm: **{df_wyniki.index[-1]}** (spadek: {df_wyniki.iloc[-1]['Spadek']:.4f})")
     else:
         st.info("Kliknij przycisk aby uruchomić eksperyment porównawczy. Może to potrwać około 30 sekund.")
 
@@ -442,7 +471,7 @@ elif zakładka == "Porównanie algorytmów":
 # ZAKŁADKA 4 — HISTORIA REKOMENDACJI
 # ═══════════════════════════════════════════════
 elif zakładka == "Historia":
-    st.title("📋 Historia Rekomendacji")
+    st.title("Historia Rekomendacji")
     st.markdown("Przeglądaj historię wszystkich wygenerowanych rekomendacji diagnostycznych.")
 
     query_historia = '''
