@@ -10,17 +10,16 @@ implementacja/
 ├── train_model.py          # Trenowanie i eksport modeli ML
 ├── translations.py         # Słownik tłumaczeń PL/EN
 ├── requirements.txt        # Wymagane biblioteki Python
-├── docker-compose.yml      # Konfiguracja Docker
-├── Dockerfile              # Obraz aplikacji
-├── init/
-│   └── schema.sql          # Schemat bazy danych
+dane/
+baza_danych/
+├── schemat bazy danych drawio
+├── baza_danych.sql
 └── skrypty_migracji/
-    ├── 01_import_training.py
-    ├── 02_import_precautions.py
-    ├── 03_import_workout.py
-    ├── 04_import_diets.py
-    ├── 05_import_medications.py
-    └── 06_import_symptoms.py
+    ├── import_training.py
+    ├── import_precautions.py
+    ├── import_diets.py
+    ├── import_medications.py
+    └── import_symptoms.py
 ```
 
 ## Wymagania wstępne
@@ -75,12 +74,11 @@ dane/
 Uruchom skrypty migracji w kolejności:
 
 ```bash
-python skrypty_migracji/05_import_medications.py  # tworzy choroby i leki
-python skrypty_migracji/06_import_symptoms.py     # tworzy objawy z wagami
-python skrypty_migracji/01_import_training.py     # dane treningowe
-python skrypty_migracji/02_import_precautions.py  # zalecenia (precautions)
-python skrypty_migracji/03_import_workout.py      # zalecenia (workout)
-python skrypty_migracji/04_import_diets.py        # diety
+python skrypty_migracji/import_medications.py  # tworzy choroby i leki
+python skrypty_migracji/import_symptoms.py     # tworzy objawy z wagami
+python skrypty_migracji/import_training.py     # dane treningowe
+python skrypty_migracji/import_precautions.py  # zalecenia (precautions)
+python skrypty_migracji/import_diets.py        # diety
 ```
 
 ### Krok 5 — Trenowanie modeli ML
@@ -98,43 +96,6 @@ streamlit run app.py
 ```
 
 Aplikacja będzie dostępna pod adresem: http://localhost:8501
-
----
-
-## Uruchomienie Z Dockerem (zalecane)
-
-### Krok 1 — Pobierz dane z Kaggle
-
-Umieść pliki CSV w folderze `dane/` (tak samo jak powyżej).
-
-### Krok 2 — Uruchom kontenery
-
-```bash
-docker-compose up --build
-```
-
-Docker automatycznie:
-- uruchomi PostgreSQL
-- utworzy schemat bazy danych
-- uruchomi aplikację Streamlit
-
-### Krok 3 — Import danych (jednorazowo)
-
-W osobnym terminalu, po uruchomieniu kontenerów:
-
-```bash
-docker-compose exec app python skrypty_migracji/05_import_medications.py
-docker-compose exec app python skrypty_migracji/06_import_symptoms.py
-docker-compose exec app python skrypty_migracji/01_import_training.py
-docker-compose exec app python skrypty_migracji/02_import_precautions.py
-docker-compose exec app python skrypty_migracji/03_import_workout.py
-docker-compose exec app python skrypty_migracji/04_import_diets.py
-docker-compose exec app python train_model.py
-```
-
-### Krok 4 — Dostęp do aplikacji
-
-Aplikacja dostępna pod: http://localhost:8501
 
 ---
 
@@ -157,13 +118,10 @@ Domyślne ustawienia w `app.py` i skryptach migracji:
 DB_URL = 'postgresql://postgres:postgres@localhost:5432/AuraMed3'
 ```
 
-Przy użyciu Dockera adres hosta zmienia się automatycznie na `db`.
-
 ---
 
 ## Uwagi
 
 - System służy wyłącznie jako wsparcie decyzji klinicznych
 - Ostateczna diagnoza zawsze należy do lekarza
-- Dane pacjentów są anonimizowane (kody PAC-XXXXXXXXXX)
 - Modele `.pkl` muszą być wygenerowane przed uruchomieniem aplikacji

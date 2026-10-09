@@ -2,11 +2,11 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # 1. Konfiguracja połączenia z Postgres
-engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
 
 # 2. Wczytanie danych
-df_symptoms = pd.read_csv('dane/symtoms_df.csv')
-df_severity = pd.read_csv('dane/Symptom-severity.csv')
+df_symptoms = pd.read_csv('../../dane/symtoms_df.csv')
+df_severity = pd.read_csv('../../dane/Symptom-severity.csv')
 
 
 # --- KROK 1: TABELA OBJAWY (Tworzymy ją na nowo z wagami) ---

@@ -2,11 +2,11 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # 1. Konfiguracja połączenia z Postgres
-engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
 
 # 2. Wczytanie danych
-df_meds = pd.read_csv('dane/medications.csv')
-df_desc = pd.read_csv('dane/description.csv') # Zakładamy, że ten plik ma kolumny 'Disease' i 'Description'
+df_meds = pd.read_csv('../../dane/medications.csv')
+df_desc = pd.read_csv('../../dane/description.csv') # Zakładamy, że ten plik ma kolumny 'Disease' i 'Description'
 
 # Czyszczenie leków (tak jak wcześniej)
 df_meds['Medication'] = df_meds['Medication'].str.replace(r"[\[\]']", "", regex=True).str.split(", ")
@@ -43,6 +43,6 @@ mapping_df = mapping_df.merge(meds_df, left_on='Medication', right_on='nazwa_lek
 # Wybieramy ID (id_x to ID choroby, id_y to ID leku)
 final_relation_df = mapping_df[['id_x', 'id_y']].rename(columns={'id_x': 'choroba_id', 'id_y': 'lek_id'})
 
-final_relation_df.to_sql('choroba_leki', engine, if_exists='append', index=False)
+final_relation_df.to_sql('choroba_lek', engine, if_exists='append', index=False)
 
 print("Migracja z opisami zakończona sukcesem!")

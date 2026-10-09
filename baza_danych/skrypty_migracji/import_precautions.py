@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 # 1. Połączenie z bazą
-engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
 
 with engine.begin() as conn:
     conn.execute(text("TRUNCATE TABLE choroba_zalecenia, zalecenia RESTART IDENTITY CASCADE;"))
@@ -53,7 +53,7 @@ final_prec_relation.to_sql('choroba_zalecenia', engine, if_exists='append', inde
 # ==========================================
 # CZĘŚĆ 2: Przetwarzanie workout_df.csv
 # ==========================================
-df_work = pd.read_csv('dane/workout_df.csv')
+df_work = pd.read_csv('../../dane/workout_df.csv')
 print("Kolumny w workout_df.csv:", df_work.columns.tolist())
 df_work['workout'] = df_work['workout'].str.strip()
 
