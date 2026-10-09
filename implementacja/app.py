@@ -31,7 +31,7 @@ st.set_page_config(
     layout="wide"
 )
 
-DB_URL = 'postgresql://postgres:postgres@localhost:5432/AuraMed3'
+DB_URL = 'postgresql://postgres:koty@localhost:5432/AuraMed3'
 
 # ─────────────────────────────────────────────
 # ŁADOWANIE ZASOBÓW (cache)

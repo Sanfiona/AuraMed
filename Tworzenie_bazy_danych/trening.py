@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 # 1. Połączenie
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
 
 # 2. Wczytanie pliku i czyszczenie nazw kolumn
 df_train = pd.read_csv('dane/Training.csv')

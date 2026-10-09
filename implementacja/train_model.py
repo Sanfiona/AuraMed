@@ -14,7 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 # ─────────────────────────────────────────────
 # 1. Połączenie z bazą i pobranie danych
 # ─────────────────────────────────────────────
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
 
 print("[INFO] Pobieranie przypadków treningowych z bazy...")
 query_przypadki = '''

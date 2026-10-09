@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
 
 # 1. Wczytujemy ten drugi plik (z poradami o jedzeniu/ćwiczeniach)
 df_work = pd.read_csv('dane/workout_df.csv')

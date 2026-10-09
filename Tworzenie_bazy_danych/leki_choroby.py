@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # 1. Konfiguracja połączenia z Postgres
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
 
 # 2. Wczytanie danych
 df_meds = pd.read_csv('dane/medications.csv')
@@ -15,7 +15,7 @@ df_meds['Medication'] = df_meds['Medication'].str.replace(r"[\[\]']", "", regex=
 all_meds = df_meds['Medication'].explode().unique()
 meds_df = pd.DataFrame({'nazwa_leku': all_meds}).reset_index().rename(columns={'index': 'id'})
 meds_df['id'] += 1
-meds_df.to_sql('leki', engine, if_exists='replace', index=False)
+meds_df.to_sql('leki', engine, if_exists='append', index=False)
 
 # --- KROK B: Tabela chorób Z OPISAMI ---
 # 1. Wyciągamy unikalne nazwy chorób
@@ -31,7 +31,7 @@ diseases_df = diseases_df.reset_index().rename(columns={'index': 'id'})
 diseases_df['id'] += 1
 
 # Wysyłamy tabelę z kolumną 'opis' do Postgresa
-diseases_df.to_sql('choroby', engine, if_exists='replace', index=False)
+diseases_df.to_sql('choroby', engine, if_exists='append', index=False)
 
 # --- KROK C: Tabela łącząca choroba_lek ---
 exploded_df = df_meds.explode('Medication')
@@ -43,6 +43,6 @@ mapping_df = mapping_df.merge(meds_df, left_on='Medication', right_on='nazwa_lek
 # Wybieramy ID (id_x to ID choroby, id_y to ID leku)
 final_relation_df = mapping_df[['id_x', 'id_y']].rename(columns={'id_x': 'choroba_id', 'id_y': 'lek_id'})
 
-final_relation_df.to_sql('choroba_lek', engine, if_exists='replace', index=False)
+final_relation_df.to_sql('choroba_leki', engine, if_exists='append', index=False)
 
 print("Migracja z opisami zakończona sukcesem!")
