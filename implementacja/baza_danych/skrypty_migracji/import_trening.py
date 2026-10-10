@@ -1,11 +1,20 @@
+import os
+
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-# 1. Połączenie
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
 
+# 1. Połączenie
+db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+engine = create_engine(db_url)
+
+with engine.begin() as conn:
+    conn.execute(text("TRUNCATE TABLE przypadek_objawy, przypadki_treningowe RESTART IDENTITY CASCADE;"))
 # 2. Wczytanie pliku i czyszczenie nazw kolumn
-df_train = pd.read_csv('../../dane/Training.csv')
+current_dir = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'Training.csv'))
+df_train = pd.read_csv(csv_path)
+
 # Czyścimy nazwy kolumn (małe litery, brak spacji), żeby pasowały do bazy
 df_train.columns = [c.strip().replace(' ', '_').lower() for c in df_train.columns]
 

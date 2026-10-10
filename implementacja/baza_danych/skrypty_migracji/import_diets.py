@@ -1,15 +1,20 @@
+import os
+
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-# 1. Konfiguracja połączenia
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
 
+# 1. Konfiguracja połączenia
+db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+engine = create_engine(db_url)
 # Wyczyszczenie tabel i zresetowanie liczników ID przed ponownym wstawieniem
 with engine.begin() as conn:
     conn.execute(text("TRUNCATE TABLE choroba_dieta, diety RESTART IDENTITY CASCADE;"))
 
 # 2. Wczytanie danych
-df_diets = pd.read_csv('../../dane/diets.csv')
+current_dir = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'diets.csv'))
+df_diets = pd.read_csv(csv_path)
 
 # Czyszczenie i rozbijanie listy tekstowej na prawdziwą listę
 df_diets['Diet'] = df_diets['Diet'].str.replace(r"[\[\]']", "", regex=True).str.split(",")

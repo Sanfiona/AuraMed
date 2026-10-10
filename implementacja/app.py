@@ -3,6 +3,8 @@ app.py - Aplikacja AuraMed
 Uruchom: streamlit run app.py
 Wymagane: najpierw uruchom train_model.py
 """
+import os
+
 import streamlit as st
 import joblib
 import pandas as pd
@@ -31,8 +33,7 @@ st.set_page_config(
     layout="wide"
 )
 
-DB_URL = 'postgresql://postgres:koty@localhost:5432/AuraMed3'
-
+DB_URL = os.getenv('DB_URL', 'postgresql://postgres:postgres@localhost:5432/AuraMed3')
 # ─────────────────────────────────────────────
 # ŁADOWANIE ZASOBÓW (cache)
 # ─────────────────────────────────────────────

@@ -1,8 +1,12 @@
+import os
+
 import pandas as pd
 from sqlalchemy import create_engine, text
 
+
 # 1. Połączenie z bazą
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+engine = create_engine(db_url)
 
 with engine.begin() as conn:
     conn.execute(text("TRUNCATE TABLE choroba_zalecenia, zalecenia RESTART IDENTITY CASCADE;"))
@@ -12,7 +16,8 @@ diseases_db = pd.read_sql('SELECT id, nazwa_choroby FROM choroby', engine)
 # ==========================================
 # CZĘŚĆ 1: Przetwarzanie precautions_df.csv
 # ==========================================
-df_prec = pd.read_csv('dane/precautions_df.csv')
+current_dir = os.path.dirname(os.path.abspath(__file__))
+df_prec = pd.read_csv(os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'precautions_df.csv')))
 all_prec_cols = ['Precaution_1', 'Precaution_2', 'Precaution_3', 'Precaution_4']
 
 # Pobieramy aktualny stan tabeli zaleceń z bazy
@@ -53,7 +58,8 @@ final_prec_relation.to_sql('choroba_zalecenia', engine, if_exists='append', inde
 # ==========================================
 # CZĘŚĆ 2: Przetwarzanie workout_df.csv
 # ==========================================
-df_work = pd.read_csv('../../dane/workout_df.csv')
+
+df_work = pd.read_csv(os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'workout_df.csv')))
 print("Kolumny w workout_df.csv:", df_work.columns.tolist())
 df_work['workout'] = df_work['workout'].str.strip()
 

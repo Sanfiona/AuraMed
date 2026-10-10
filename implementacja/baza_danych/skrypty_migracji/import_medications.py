@@ -1,12 +1,21 @@
+import os
+
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+
 
 # 1. Konfiguracja połączenia z Postgres
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+engine = create_engine(db_url)
 
+with engine.begin() as conn:
+    conn.execute(text("TRUNCATE TABLE choroby, leki, choroba_lek RESTART IDENTITY CASCADE;"))
 # 2. Wczytanie danych
-df_meds = pd.read_csv('../../dane/medications.csv')
-df_desc = pd.read_csv('../../dane/description.csv') # Zakładamy, że ten plik ma kolumny 'Disease' i 'Description'
+current_dir = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'medications.csv'))
+df_meds = pd.read_csv(csv_path)
+csv_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'description.csv'))
+df_desc = pd.read_csv(csv_path) 
 
 # Czyszczenie leków (tak jak wcześniej)
 df_meds['Medication'] = df_meds['Medication'].str.replace(r"[\[\]']", "", regex=True).str.split(", ")

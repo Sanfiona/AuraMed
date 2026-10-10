@@ -3,6 +3,8 @@ train_model.py
 Uruchom ten skrypt PRZED uruchomieniem aplikacji Streamlit.
 Trenuje model przy użyciu wag oraz częstotliwości i zapisuje wszystkie potrzebne pliki .pkl
 """
+import os
+
 import pandas as pd
 import numpy as np
 import joblib
@@ -11,10 +13,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
+
 # ─────────────────────────────────────────────
 # 1. Połączenie z bazą i pobranie danych
 # ─────────────────────────────────────────────
-engine = create_engine('postgresql://postgres:koty@localhost:5432/AuraMed3')
+db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+engine = create_engine(db_url)
 
 print("[INFO] Pobieranie przypadków treningowych z bazy...")
 query_przypadki = '''

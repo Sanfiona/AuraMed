@@ -1,12 +1,21 @@
+import os
+
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+
 
 # 1. Konfiguracja połączenia z Postgres
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/AuraMed3')
+db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+engine = create_engine(db_url)
 
+with engine.begin() as conn:
+    conn.execute(text("TRUNCATE TABLE choroba_objawy, objawy RESTART IDENTITY CASCADE;"))
 # 2. Wczytanie danych
-df_symptoms = pd.read_csv('../../dane/symtoms_df.csv')
-df_severity = pd.read_csv('../../dane/Symptom-severity.csv')
+current_dir = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'symtoms_df.csv'))
+df_symptoms = pd.read_csv(csv_path)
+csv_path = os.path.abspath(os.path.join(current_dir, '..', '..', 'dane', 'Symptom-severity.csv'))
+df_severity = pd.read_csv(csv_path)
 
 
 # --- KROK 1: TABELA OBJAWY (Tworzymy ją na nowo z wagami) ---
