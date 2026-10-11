@@ -107,7 +107,7 @@ Przejdź do folderu `implementacja` i uruchom środowisko:
 
 ```bash
 cd implementacja
-docker-compose up -d --build
+docker-compose --profile setup up -d --build
 ```
 
 Docker automatycznie:

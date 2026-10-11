@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, text
 
 
 # 1. Konfiguracja połączenia
-db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+db_url = os.getenv("DB_URL", "postgresql://postgres:postgres@localhost:5432/AuraMed3")
 engine = create_engine(db_url)
 # Wyczyszczenie tabel i zresetowanie liczników ID przed ponownym wstawieniem
 with engine.begin() as conn:

@@ -17,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier
 # ─────────────────────────────────────────────
 # 1. Połączenie z bazą i pobranie danych
 # ─────────────────────────────────────────────
-db_url = os.getenv("DB_URL", "postgresql://postgres:koty@localhost:5432/AuraMed3")
+db_url = os.getenv("DB_URL", "postgresql://postgres:postgres@localhost:5432/AuraMed3")
 engine = create_engine(db_url)
 
 print("[INFO] Pobieranie przypadków treningowych z bazy...")
