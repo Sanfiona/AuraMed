@@ -108,6 +108,7 @@ Przejdź do folderu `implementacja` i uruchom środowisko:
 ```bash
 cd implementacja
 docker-compose --profile setup up -d --build
+docker compose run --rm setup
 ```
 
 Docker automatycznie:
