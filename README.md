@@ -67,7 +67,8 @@ Przejdź do folderu `implementacja` i uruchom jednorazowy kontener konfiguracyjn
 
 ```bash
 cd implementacja
-docker compose --profile setup run --rm setup
+docker-compose --profile setup up -d --build
+docker compose run --rm setup
 ```
 
 ### Krok 3 — Uruchomienie środowiska produkcyjnego
