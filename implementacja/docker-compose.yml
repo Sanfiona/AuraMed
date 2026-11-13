@@ -12,13 +12,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./baza_danych/baza_danych.sql:/docker-entrypoint-initdb.d/baza_danych.sql
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # Jednorazowy setup - import danych i trenowanie
   setup:
@@ -53,8 +52,6 @@ services:
     container_name: auramed_app
     environment:
       DB_URL: postgresql://postgres:postgres@db:5432/AuraMed3
-    ports:
-      - "8501:8501"
     volumes:
       - ./dane:/app/dane
       - ./baza_danych:/app/baza_danych
@@ -68,5 +65,20 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Serwer WWW z logowaniem i HTTPS
+  caddy:
+    image: caddy:alpine
+    container_name: auramed_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - app
+
 volumes:
   postgres_data:
+  caddy_data:
