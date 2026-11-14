@@ -67,7 +67,7 @@ class TestNoise:
         """Sprawdza że szum 0% nie zmienia danych."""
         X, _ = dane_binarne
         X_noisy = wprowadz_szum(X, 0.0)
-        assert X.equals(X_noisy.astype(int)), "Szum 0% nie powinien zmieniać danych"
+        assert X.equals(X_noisy.astype(X.dtypes)), "Szum 0% nie powinien zmieniać danych"
 
     def test_szum_zachowuje_ksztalt(self, dane_binarne):
         """Sprawdza że szum nie zmienia kształtu macierzy."""
