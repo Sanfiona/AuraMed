@@ -169,7 +169,7 @@ OBJAWY_PL = {
     "receiving_blood_transfusion": "przetoczenie krwi",
     "receiving_unsterile_injections": "niesterylne zastrzyki",
     "coma": "śpiączka",
-    "stomach_bleeding": "krwawienie żołądkowe",
+    "stomach_bleeding": "krwawienie żołądkowe", 
     "distention_of_abdomen": "wzdęcie brzucha",
     "history_of_alcohol_consumption": "wywiad alkoholowy",
     "fluid_overload.1": "nadmierne zatrzymanie płynów",
