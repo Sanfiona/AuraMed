@@ -184,6 +184,7 @@ if zakładka == "Diagnostyka":
 
         wybrane_pl = st.multiselect(
             "Objawy pacjenta:",
+            max_selections=20,
             options=polskie_nazwy,
         )
 

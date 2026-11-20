@@ -5,7 +5,7 @@ Wypisuje przykładowe przypadki testowe dla wybranych chorób z Training.csv
 import pandas as pd
 
 # Wczytaj plik testowy
-df = pd.read_csv('../dane/Training.csv')
+df = pd.read_csv('dane/Training.csv')
 print(df['prognosis'].unique())
 
 # Wybrane choroby do testowania
